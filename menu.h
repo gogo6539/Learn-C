@@ -1,1 +1,3 @@
-short menu( char *t[]);
+
+
+int menu( char *t[]);
