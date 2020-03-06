@@ -1,12 +1,14 @@
 
 #include <stdio.h>
-short countSymbols(FILE *fp_in,FILE *fp_out);
-FILE *getNameFile(char *name_file, char *mode, char *text);
-void printTextFile();
-short countChosenSymbol(FILE *fp_in,char *ch);
-void changeSymbol(FILE *fp_in,FILE *fp_out);
-int maxMinNumbers(FILE *fp_in,int *min);
-void	writeNumbersOfInterval(FILE *fp_in,FILE *fp_out);
-int averageOfNumbers(FILE *fp_in, int *n);
-void changeNegativeNumbers(FILE *fp_in,FILE *fp_out);
-int Sum(int x, int y, int *overflow);
+
+typedef enum sta_word{None, In_Word, End_Word} s_word;
+s_word ComputeWord(int c, char *word, s_word status);
+int Words(FILE *fp);
+
+typedef enum sta_Sent{ None1, In_Sent, End_Sent } s_Sent;
+s_Sent ComputeSent(int c, char *Sent, s_Sent status);
+int Sents(FILE *fp);
+
+typedef enum sta_int{ None2, In_Sign, In_Int, In_End, In_Long } s_int;
+s_int ComputeInt(int c, s_int status);
+int Ints(FILE *fp);

@@ -1,205 +1,216 @@
-#define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
-#include <conio.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <limits.h>
+
+// ------------ file my_func.c ----------------------------
+
 #include "my_func.h"
-//---------------------------------------------------------------------------
+#include <ctype.h>
 
-FILE *getNameFile(char *name_file, char *mode, char *text)
+
+int delimiters_word[]={'"','\'',' ',',','.','?','!',':',';','/','\\','*', 
+                       '<','>','(',')','{','}','[',']','\n','\t',EOF,0};
+
+
+int delimiters_Sent[] = {'.', '?', '!', EOF, 0 };
+
+int delimiters_int[] = { '"', '\'', ' ', ',', '.', '?', '!', ':', ';', '/', '\\', '*',
+'<', '>', '(', ')', '{', '}', '[', ']', '\n', '\t', EOF, 0 };
+
+int IsDelimiter(int *delimiters, int c)
 {
-	FILE *fp;
-	int err;
- 
+  int i=0;
+  while(delimiters[i])
+  {
+    if (c==delimiters[i++])
+      return 1; //--- символът с е разделител ---
+  }
+  return 0;
+}
+
+
+//-----------------------------------------------------------
+s_word ComputeWord(int c,      //--- текущ символ, които се анализира ---
+								 char *word,   //--- символен масив за отделяне на дума
+								 s_word status //--- текущ статус на автоматната функция
+								)
+{
+  static int ind=0;
+  char ch=c;
+
+  if(status==End_Word) 
+  {
+    status=None;
+    ind=0;
+  } 
+  switch (status)
+  {
+		case None:
+	    if (!IsDelimiter(delimiters_word,ch))
+			{
+				status=In_Word;
+				word[ind++]=c;
+			}
+   break;
+
+   case In_Word:
+    if( IsDelimiter(delimiters_word,ch ))
+    {
+      status=End_Word;
+      word[ind]=0;
+    }
+    else
+    {
+			word[ind++]=c;
+    }
+  }
+	return status;
+}
+//-----------------------------------------------------------
+
+int Words(FILE *fp)
+{
+	int c, br_word=0;
+  s_word status=None;
+	char word[256];
+  rewind(fp);
+  do
+  {
+    c=fgetc(fp);
+     status=ComputeWord(c, word,status);
+		 if ( status==End_Word)
+     {
+			 br_word++;
+			 printf("\n word -> %s",word);
+     }
+	}while(c!=EOF);
+return br_word;
+}
+////////////////////********************
+
+s_Sent ComputeSent(int c,      //--- текущ символ, които се анализира ---
+	char *Sent,   //--- символен масив за отделяне на дума
+	s_Sent status //--- текущ статус на автоматната функция
+	)
+{
+	static int ind = 0;
+	char ch = c;
+
+	if (status == End_Sent)
+	{
+		status = None1;
+		ind = 0;
+	}
+	switch (status)
+	{
+	case None1:
+		if (!IsDelimiter(delimiters_Sent, ch))
+		{
+			status = In_Sent;
+			Sent[ind++] = c;
+		}
+		break;
+
+	case In_Sent:
+		if (IsDelimiter(delimiters_Sent, ch))
+		{
+			status = End_Sent;
+			Sent[ind++] = c;
+			Sent[ind] = 0;
+		}
+		else
+		{
+			Sent[ind++] = c;
+		}
+	}
+	return status;
+}
+//-----------------------------------------------------------
+
+int Sents(FILE *fp)
+{
+	int c, br_sent = 0;
+	s_Sent status = None1;
+	char Sent[256];
+	rewind(fp);
 	do
 	{
-		printf("\nВъведете име на файла %s:",text);
-		err= scanf("%s", name_file);
-	}while(err!=1);
-
-	if ((fp=fopen(name_file,mode))==NULL)
-	{
-		printf("\nФайлът <%s> Не може да се отвори - error No % d !!!\n",name_file,errno);
-		printf("ГРЕШКА No %d %s",errno,strerror( errno ));
-		system("pause");
-	}
-	else
-	{
-		printf("\nФайлът <%s> е отворен успешно за обработка !\n\n", name_file);
-		system("pause");
-	}
-	return fp;
-}
-//---------------------------------------------------------------------------------------------
-void printTextFile()
-{
-	FILE *fp=NULL;
-	char name_file[256],ch;
-	if((fp=getNameFile(name_file, "rt", "за четене"))!=NULL)
-	{
-		while(1)
+		c = fgetc(fp);
+		status = ComputeSent(c, Sent, status);
+		if (status == End_Sent)
 		{
-			ch=fgetc(fp);
-			if(ch==EOF)
-				break;
-			fputc(ch,stdout);
+			br_sent++;
+			printf("\n Sent -> %s", Sent);
 		}
-	}
-	system("pause");
-	fclose(fp);
+	} while (c != EOF);
+	return br_sent;
 }
-//---------------------------------------------------------------------------------------------
 
-short countSymbols(FILE *fp_in,FILE *fp_out)
+
+//*******************************
+s_int ComputeInts(int c,      //--- текущ символ, които се анализира ---
+	s_int status //--- текущ статус на автоматната функция
+	)
 {
-	short ascii_table[256]={0},ascii_count=0,m=0,i=0;
-	rewind(fp_in);
-	while ((ascii_count = fgetc(fp_in)) != EOF)
-		ascii_table[ascii_count]++;
+	static int ind = 0;
+	char ch = c;
 
-	for (i = 0; i < 256; i++)
-	if (ascii_table[i]>0)
-		fprintf(fp_out, "\n %c \t\t %d \t\t 0x%x \t\t %d", i, i, i, ascii_table[i]);
-
-	if (ferror(fp_in))
+	if (status = In_End)
 	{
-		printf("Error!");
-		return 1;
+		status = None2;
+		ind = 0;
 	}
-	
-	return 0;  
-}
-//------------------------------------------------------------------------
-
-short countChosenSymbol(FILE *fp_in,char *ch)
-{
-	short count=0;
-	char c=0;
-	rewind(fp_in);
-	printf("Въведете символ за преброяване:");
-	while ((c = fgetc(fp_in)) != EOF)
+	switch (status)
 	{
-		if (c == ch)
-			count++;
+	case None2:
+		if (c == '+' || '-')
+			status = In_Sign;
+		else
+		if (isdigit(c))
+			status = In_Int;
+		else
+			status = None2;
+		break;
+
+	case In_Sign:
+		if (isdigit(c))
+			status = In_Int;
+		else
+			status = None2;
+		break;
+	case In_Int:
+		if (isdigit(c))
+			status = In_Int;
+		else
+		if (c == 'l' || c == 'L')
+			status = In_Long;
+		else
+		if (IsDelimiter(delimiters_int, ch))
+			status = In_End;
+		else
+			status = None2;
+		break;
+	case In_Long:
+		if (IsDelimiter(delimiters_int, ch))
+			status = In_End;
+		else
+			status = None2;
+		break;
 	}
-	printf("%d", count);
-	
-	return count;  
+	return status;
 }
-//------------------------------------------------------------------------
-void changeSymbol(FILE *fp_in,FILE *fp_out)
-{
-	char ch1,ch2,c=0;
-	rewind(fp_in);
-	printf("Въведете символ за замяна:");
+//-----------------------------------------------------------
 
-	ch1=getchar();
-	fflush(stdin);
-	printf("Въведете заместващ символ:");
-	ch2=getchar();
-	fflush(stdin);
-	
-}
-//------------------------------------------------------------------------------
-int maxMinNumbers(FILE *fp_in,int *min)
+int Ints(FILE *fp)
 {
-	int i=0,max=0,num=0;
-	rewind(fp_in);
-	
-	return max;
-}
-//-------------------------------------------------------------------------------
-void	writeNumbersOfInterval(FILE *fp_in,FILE *fp_out)
-{
-	int a,b,n,num=0,i=0;
-	rewind(fp_in);
-
-	printf("Въведете долна граница=");
-	scanf("%d",&a);
+	int c, br_Int = 0;
+	s_int status = None2;
+	rewind(fp);
 	do
 	{
-		printf("Въведете горна граница=");
-		scanf("%d",&b);
-	}while(a>=b);
-
-	printf("Въведете брой колони=");
-	scanf("%d",&n);
-
-	
-}
-//-------------------------------------------------------------------------------------------------------
-int averageOfNumbers(FILE *fp_in, int *n)
-{
-	char str[20];
-	int S = 0, num = 0, overflow=0;
-	while (fscanf(fp_in, "%s", str) != EOF)
-	{
-		num = atoi(str);
-		if (errno == 34)
+		c = fgetc(fp);
+		status = ComputeInt(c, status);
+		if (status == In_End)
 		{
-			perror("Препълване при четене");
-			system("pause");
-			exit(1);
+			br_Int++;
 		}
-		S = Sum(S, num, &overflow);
-		if (overflow == 1)
-		{
-			perror("Препълване при събиране");
-			system("pause");
-			exit(1);
-		}
-		(*n)++;
-	}
-	if (ferror(fp_in))
-	{
-		perror("Грешка във файла");
-		system("pause");
-		exit(1);
-	}
-	return S;
+	} while (c != EOF);
+	return br_Int;
 }
-//--------------------------------------------------------
-void changeNegativeNumbers(FILE *fp_in,FILE *fp_out)
-{
-	int num=0;
-	char ch=0;
-	rewind(fp_in);
-
-}
-//---------------------------------------------------------
-int Sum(int x, int y, int *overflow)
-{
-	int S = 0, noOverflow=1;
-	S = x + y;
-	_asm
-	{
-		jno NO
-			mov noOverflow,0
-			NO:
-	}
-	if (noOverflow == 0)
-		*overflow = 1;
-	else
-		*overflow = 0;
-	return S;
-}
-//***************************************************
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
